@@ -15,3 +15,7 @@ Show `git log` of current file
 #### `M-x sgit-status`
 
 Show `git status` of current directory
+
+#### `M-x sgit-intent-to-add`
+
+Execute `git add -N` for current file 
