@@ -67,7 +67,18 @@
     (dired-mode (dired-get-filename nil t))
     (otherwise (buffer-file-name))))
 
+(defun sgit--check-in-work-tree ()
+  (with-temp-buffer
+    (if (not (zerop (call-process "git" nil t nil "rev-parse" "--is-inside-work-tree")))
+        (error "Here is not git repository")
+      (goto-char (point-min))
+      (let ((bool-str (buffer-substring-no-properties
+                       (point) (line-end-position))))
+        (unless (string= bool-str "true")
+          (error "Here is in `.git'"))))))
+
 (defun sgit--git-cmd (subcmd &optional mode-func)
+  (sgit--check-in-work-tree)
   (let ((cmd (format "git --no-pager %s %s"
                      subcmd
                      (expand-file-name (sgit--file-name)))))
