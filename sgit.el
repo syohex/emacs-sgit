@@ -51,15 +51,17 @@
      (apply 'start-file-process "sgit" buf cmds)
      (lambda (proc _event)
        (when (eq (process-status proc) 'exit)
-         (with-current-buffer (process-buffer proc)
-           (if (string-empty-p (buffer-string))
-               (message "No Changes")
-             (goto-char (point-min))
-             (when mode-func
-               (funcall mode-func))
-             (view-mode +1)
-             (read-only-mode +1)
-             (pop-to-buffer (current-buffer)))))))))
+         (if (/= (process-exit-status proc) 0)
+             (error "Faild: %s" cmds)
+           (with-current-buffer (process-buffer proc)
+             (if (string-empty-p (buffer-string))
+                 (message "No Changes")
+               (goto-char (point-min))
+               (when mode-func
+                 (funcall mode-func))
+               (view-mode +1)
+               (read-only-mode +1)
+               (pop-to-buffer (current-buffer))))))))))
 
 (defun sgit--file-name ()
   (cl-case major-mode
