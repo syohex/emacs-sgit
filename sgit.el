@@ -26,6 +26,7 @@
 
 (require 'cl-lib)
 (require 'diff)
+(require 'subr-x)
 
 (declare-function git-gutter "git-gutter")
 
@@ -50,7 +51,7 @@
      (lambda (proc _event)
        (when (eq (process-status proc) 'exit)
          (with-current-buffer (process-buffer proc)
-           (if (string= (buffer-string) "")
+           (if (string-empty-p (buffer-string))
                (message "No Changes")
              (goto-char (point-min))
              (when mode-func
