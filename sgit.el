@@ -59,9 +59,6 @@
              (read-only-mode +1)
              (pop-to-buffer (current-buffer)))))))))
 
-(defun sgit--prompt (git-cmd &optional option)
-  (read-string "> " (format "git %s %s " git-cmd (or option ""))))
-
 (defun sgit--file-name ()
   (cl-case major-mode
     (dired-mode (dired-get-filename nil t))
