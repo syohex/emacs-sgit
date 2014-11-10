@@ -37,7 +37,7 @@
 (defvar sgit--buffer "*sgit*"
   "Name of the buffer where is execute command")
 
-(defun sgit--exec (cmd &optional mode-func)
+(defun sgit--exec (cmds &optional mode-func)
   (when (get-buffer sgit--buffer)
     (kill-buffer (get-buffer sgit--buffer)))
   (let ((buf (get-buffer-create sgit--buffer)))
@@ -46,7 +46,7 @@
       (view-mode -1)
       (erase-buffer))
     (set-process-sentinel
-     (start-process-shell-command "sgit" buf cmd)
+     (apply 'start-file-process "sgit" buf cmds)
      (lambda (proc _event)
        (when (eq (process-status proc) 'exit)
          (with-current-buffer (process-buffer proc)
@@ -69,7 +69,7 @@
 
 (defun sgit--check-in-work-tree ()
   (with-temp-buffer
-    (if (not (zerop (call-process "git" nil t nil "rev-parse" "--is-inside-work-tree")))
+    (if (not (zerop (process-file "git" nil t nil "rev-parse" "--is-inside-work-tree")))
         (error "Here is not git repository")
       (goto-char (point-min))
       (let ((bool-str (buffer-substring-no-properties
@@ -79,10 +79,9 @@
 
 (defun sgit--git-cmd (subcmd &optional mode-func)
   (sgit--check-in-work-tree)
-  (let ((cmd (format "git --no-pager %s %s"
-                     subcmd
-                     (expand-file-name (sgit--file-name)))))
-    (sgit--exec cmd mode-func)))
+  (let ((cmds (list "git" "--no-pager" subcmd
+                    (expand-file-name (sgit--file-name)))))
+    (sgit--exec cmds mode-func)))
 
 ;;;###autoload
 (defun sgit-status ()
@@ -110,7 +109,7 @@
   (interactive)
   (save-buffer)
   (let ((file (file-name-nondirectory (buffer-file-name))))
-    (unless (zerop (call-process "git" nil nil nil "add" "-N" file))
+    (unless (zerop (process-file "git" nil nil nil "add" "-N" file))
       (error "Failed: 'git add -N %s'" file))
     (message "Success: Staging %s" file))
   (when git-gutter-mode
