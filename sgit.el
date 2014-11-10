@@ -85,19 +85,6 @@
     (sgit--exec cmds mode-func)))
 
 ;;;###autoload
-(defun sgit-status ()
-  (interactive)
-  (sgit--git-cmd (concat "status" " .")))
-
-;;;###autoload
-(defun sgit-log ()
-  (interactive)
-  (let ((cmd (if current-prefix-arg
-                 "log -p --stat "
-               "log")))
-    (sgit--git-cmd cmd)))
-
-;;;###autoload
 (defun sgit-diff ()
   (interactive)
   (let ((cmd (if current-prefix-arg
