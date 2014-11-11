@@ -3,6 +3,7 @@
 ;; Copyright (C) 2014 by Syohei YOSHIDA
 
 ;; Author: Syohei YOSHIDA <syohex@gmail.com>
+;; Package-Requires: ((emacs "24"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -26,6 +27,7 @@
 
 (require 'cl-lib)
 (require 'diff)
+(require 'subr-x)
 
 (declare-function git-gutter "git-gutter")
 
@@ -37,7 +39,7 @@
 (defvar sgit--buffer "*sgit*"
   "Name of the buffer where is execute command")
 
-(defun sgit--exec (cmd &optional mode-func)
+(defun sgit--exec (cmds &optional mode-func)
   (when (get-buffer sgit--buffer)
     (kill-buffer (get-buffer sgit--buffer)))
   (let ((buf (get-buffer-create sgit--buffer)))
@@ -46,21 +48,20 @@
       (view-mode -1)
       (erase-buffer))
     (set-process-sentinel
-     (start-process-shell-command "sgit" buf cmd)
+     (apply 'start-file-process "sgit" buf cmds)
      (lambda (proc _event)
        (when (eq (process-status proc) 'exit)
-         (with-current-buffer (process-buffer proc)
-           (if (string= (buffer-string) "")
-               (message "No Changes")
-             (goto-char (point-min))
-             (when mode-func
-               (funcall mode-func))
-             (view-mode +1)
-             (read-only-mode +1)
-             (pop-to-buffer (current-buffer)))))))))
-
-(defun sgit--prompt (git-cmd &optional option)
-  (read-string "> " (format "git %s %s " git-cmd (or option ""))))
+         (if (/= (process-exit-status proc) 0)
+             (error "Faild: %s" cmds)
+           (with-current-buffer (process-buffer proc)
+             (if (string-empty-p (buffer-string))
+                 (message "No Changes")
+               (goto-char (point-min))
+               (when mode-func
+                 (funcall mode-func))
+               (view-mode +1)
+               (read-only-mode +1)
+               (pop-to-buffer (current-buffer))))))))))
 
 (defun sgit--file-name ()
   (cl-case major-mode
@@ -69,7 +70,7 @@
 
 (defun sgit--check-in-work-tree ()
   (with-temp-buffer
-    (if (not (zerop (call-process "git" nil t nil "rev-parse" "--is-inside-work-tree")))
+    (if (not (zerop (process-file "git" nil t nil "rev-parse" "--is-inside-work-tree")))
         (error "Here is not git repository")
       (goto-char (point-min))
       (let ((bool-str (buffer-substring-no-properties
@@ -79,23 +80,9 @@
 
 (defun sgit--git-cmd (subcmd &optional mode-func)
   (sgit--check-in-work-tree)
-  (let ((cmd (format "git --no-pager %s %s"
-                     subcmd
-                     (expand-file-name (sgit--file-name)))))
-    (sgit--exec cmd mode-func)))
-
-;;;###autoload
-(defun sgit-status ()
-  (interactive)
-  (sgit--git-cmd (concat "status" " .")))
-
-;;;###autoload
-(defun sgit-log ()
-  (interactive)
-  (let ((cmd (if current-prefix-arg
-                 "log -p --stat "
-               "log")))
-    (sgit--git-cmd cmd)))
+  (let ((cmds (list "git" "--no-pager" subcmd
+                    (expand-file-name (sgit--file-name)))))
+    (sgit--exec cmds mode-func)))
 
 ;;;###autoload
 (defun sgit-diff ()
@@ -110,7 +97,7 @@
   (interactive)
   (save-buffer)
   (let ((file (file-name-nondirectory (buffer-file-name))))
-    (unless (zerop (call-process "git" nil nil nil "add" "-N" file))
+    (unless (zerop (process-file "git" nil nil nil "add" "-N" file))
       (error "Failed: 'git add -N %s'" file))
     (message "Success: Staging %s" file))
   (when git-gutter-mode
